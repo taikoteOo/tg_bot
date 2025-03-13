@@ -4,7 +4,8 @@ from aiogram import Router, F
 from aiogram.enums import ParseMode
 
 from api import get_vacancies, get_courses, get_weathers
-from keyboards import simple_keyboard
+from api.vacancies_api import get_salary_vacancies
+from keyboards import simple_keyboard, vacancies_keyboard
 
 
 router = Router()
@@ -33,13 +34,36 @@ async def process_help_command(message: Message):
 async def process_weather_command(message: Message):
     await message.answer('Погода на сегодня:')
 
+def show_vacancies(item):
+    text = (f'<b>{item["Название"]}</b>\n'
+                f'Заработная плата:\n'
+                f'От: {item["Заработная плата"]["От"]} {item["Заработная плата"]["Валюта от"]}\n'
+                f'До: {item["Заработная плата"]["До"]} {item["Заработная плата"]["Валюта до"]}\n'
+                f'Дата публикации: {item["Дата публикации"]}\n'
+                f'Ссылка: {item["url"]}')
+    return text
+
+@router.message(F.text == 'Любые')
+async def progress_any(message: Message):
+    data = get_vacancies()
+    await message.answer('3 случайные вакансии на Python')
+    for item in data:
+        text = show_vacancies(item)
+        await message.answer(text, parse_mode=ParseMode.HTML,
+                             disable_web_page_preview=True) # Последнее выключает предпросмотор ссылок
+
+@router.message(F.text == 'С указанием заработной платы')
+async def progress_with_salary(message: Message):
+    data = get_salary_vacancies()
+    await message.answer('3 случайные вакансии на Python c указанием заработной платы')
+    for item in data:
+        text = show_vacancies(item)
+        await message.answer(text, parse_mode=ParseMode.HTML,
+                             disable_web_page_preview=True)
+
 @router.message(Command(commands=['vacancies']))
 async def process_vacancies_command(message: Message):
-    data = get_vacancies()
-    await message.answer('3 случайные вакансии Python-разработчика')
-    for item in data:
-        text = f'<b>{item["name"]}</b>\nЗарплата: {item["salary"]}\nДата публикации: {item["created_at"]}\nСсылка: {item["url"]}'
-        await message.answer(text, parse_mode=ParseMode.HTML,  disable_web_page_preview=True) # Последнее выключает предпросмотор ссылок
+    await message.answer(text='Какие вакансии?', reply_markup=vacancies_keyboard())
 
 @router.message(Command(commands=['courses']))
 async def process_courses_command(message: Message):
